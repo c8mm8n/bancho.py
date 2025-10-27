@@ -28,7 +28,17 @@ async def update_player_pp_aggregates(player_id: int) -> None:
         stddev = 0 if len(pp_values) <= 1 else total - 2 * math.sqrt(variance)
         return (round(total), round(stddev))
     
-    # Groupings
+    # Individual mode values (with defaults)
+    pp_std = mode_pp.get(0, 0)
+    pp_std_rx = mode_pp.get(4, 0)
+    pp_std_ap = mode_pp.get(8, 0)
+    pp_taiko = mode_pp.get(1, 0)
+    pp_taiko_rx = mode_pp.get(5, 0)
+    pp_catch = mode_pp.get(2, 0)
+    pp_catch_rx = mode_pp.get(6, 0)
+    pp_mania = mode_pp.get(3, 0)
+
+    # Groupings for aggregates
     all_modes = [mode_pp.get(i, 0) for i in [0,1,2,3,4,5,6,8]]
     classic = [mode_pp.get(i, 0) for i in [0,1,2,3]]
     relax = [mode_pp.get(i, 0) for i in [4,5,6]]
@@ -50,6 +60,10 @@ async def update_player_pp_aggregates(player_id: int) -> None:
         """
         REPLACE INTO player_pp_aggregates (
             player_id,
+            pp_std, pp_std_rx, pp_std_ap,
+            pp_taiko, pp_taiko_rx,
+            pp_catch, pp_catch_rx,
+            pp_mania,
             pp_total_all_modes, pp_stddev_all_modes,
             pp_total_classic, pp_stddev_classic,
             pp_total_relax, pp_stddev_relax,
@@ -57,6 +71,10 @@ async def update_player_pp_aggregates(player_id: int) -> None:
             pp_stddev_std, pp_stddev_taiko, pp_stddev_catch
         ) VALUES (
             :player_id,
+            :pp_std, :pp_std_rx, :pp_std_ap,
+            :pp_taiko, :pp_taiko_rx,
+            :pp_catch, :pp_catch_rx,
+            :pp_mania,
             :pp_total_all_modes, :pp_stddev_all_modes,
             :pp_total_classic, :pp_stddev_classic,
             :pp_total_relax, :pp_stddev_relax,
@@ -66,6 +84,10 @@ async def update_player_pp_aggregates(player_id: int) -> None:
         """,
         {
             "player_id": player_id,
+            "pp_std": pp_std, "pp_std_rx": pp_std_rx, "pp_std_ap": pp_std_ap,
+            "pp_taiko": pp_taiko, "pp_taiko_rx": pp_taiko_rx,
+            "pp_catch": pp_catch, "pp_catch_rx": pp_catch_rx,
+            "pp_mania": pp_mania,
             "pp_total_all_modes": all_total, "pp_stddev_all_modes": all_stddev,
             "pp_total_classic": classic_total, "pp_stddev_classic": classic_stddev,
             "pp_total_relax": relax_total, "pp_stddev_relax": relax_stddev,
