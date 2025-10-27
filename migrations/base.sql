@@ -211,7 +211,14 @@ create table player_pp_aggregates
 	pp_total_classic int unsigned default 0 not null,
 	pp_stddev_classic int unsigned default 0 not null,
 	pp_total_relax int unsigned default 0 not null,
-	pp_stddev_relax int unsigned default 0 not null
+	pp_stddev_relax int unsigned default 0 not null,
+
+	pp_total_std int unsigned default 0 not null,
+	pp_total_taiko int unsigned default 0 not null,
+	pp_total_catch int unsigned default 0 not null,
+	pp_stddev_std int unsigned default 0 not null,
+	pp_stddev_taiko int unsigned default 0 not null,
+	pp_stddev_catch int unsigned default 0 not null
 );
 
 create table ratings
