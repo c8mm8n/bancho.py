@@ -1,89 +1,75 @@
 from __future__ import annotations
-
 import math
-from typing import cast
-
+from typing import Dict, Any
 import app.state.services
 
-
 async def update_player_pp_aggregates(player_id: int) -> None:
-    """Update PP aggregates for a player.
-    
-    Fetches all stats for the player (modes 0-3, 4-6, 8),
-    calculates total PP and standard deviation for all_modes, classic, and relax,
-    and updates the player_pp_aggregates table.
-    """
-    # Fetch all stats for the player
+    # Fetch all stats for listed modes
     stats_rows = await app.state.services.database.fetch_all(
-        "SELECT mode, pp FROM stats WHERE id = :player_id AND mode IN (0, 1, 2, 3, 4, 5, 6, 8)",
-        {"player_id": player_id},
+        "SELECT mode, pp FROM stats WHERE id = :player_id AND mode IN (0,1,2,3,4,5,6,8)",
+        {"player_id": player_id}
     )
-    
+
     if not stats_rows:
         return
-    
-    # Group stats by category
-    classic_modes = [0, 1, 2, 3]  # vanilla/classic modes
-    relax_modes = [4, 5, 6, 8]     # relax modes
-    
-    classic_pp_values = []
-    relax_pp_values = []
-    all_pp_values = []
-    
+
+    # Group pp by needed categories
+    mode_pp: Dict[int, float] = {}
     for row in stats_rows:
-        mode = row["mode"]
-        pp = row["pp"]
-        
-        all_pp_values.append(pp)
-        
-        if mode in classic_modes:
-            classic_pp_values.append(pp)
-        elif mode in relax_modes:
-            relax_pp_values.append(pp)
+        mode_pp[row["mode"]] = row["pp"]
+
+    # Helper: totals for aggregates
+    def calculate_stats(pp_values):
+        if not pp_values:
+            return (0, 0)
+        total = sum(pp_values)
+        mean = total / len(pp_values)
+        variance = sum((x - mean) ** 2 for x in pp_values) / max(len(pp_values)-1, 1)
+        stddev = 0 if len(pp_values) <= 1 else total - 2 * math.sqrt(variance)
+        return (round(total), round(stddev))
     
-    # Calculate totals and stddev for each category
-    def calculate_stats(values: list[float]) -> tuple[float, float]:
-        if not values:
-            return (0.0, 0.0)
-        
-        total = sum(values)
-        
-        # Calculate standard deviation
-        if len(values) <= 1:
-            stddev = 0.0
-        else:
-            mean = total / len(values)
-            variance = sum((x - mean) ** 2 for x in values) / len(values)
-            stddev = math.sqrt(variance)
-        
-        return (total, stddev)
+    # Groupings
+    all_modes = [mode_pp.get(i, 0) for i in [0,1,2,3,4,5,6,8]]
+    classic = [mode_pp.get(i, 0) for i in [0,1,2,3]]
+    relax = [mode_pp.get(i, 0) for i in [4,5,6]]
     
-    all_total, all_stddev = calculate_stats(all_pp_values)
-    classic_total, classic_stddev = calculate_stats(classic_pp_values)
-    relax_total, relax_stddev = calculate_stats(relax_pp_values)
-    
-    # UPSERT into player_pp_aggregates using REPLACE INTO
+    std_group = [mode_pp.get(i, 0) for i in [0,4,8]]      # osu, osu relax, osu autopilot
+    taiko_group = [mode_pp.get(i, 0) for i in [1,5]]      # taiko, taiko relax
+    catch_group = [mode_pp.get(i, 0) for i in [2,6]]      # catch, catch relax
+
+    # Compute all totals/stddevs
+    all_total, all_stddev = calculate_stats([v for v in all_modes if v])
+    classic_total, classic_stddev = calculate_stats([v for v in classic if v])
+    relax_total, relax_stddev = calculate_stats([v for v in relax if v])
+    std_total, std_stddev = calculate_stats([v for v in std_group if v])
+    taiko_total, taiko_stddev = calculate_stats([v for v in taiko_group if v])
+    catch_total, catch_stddev = calculate_stats([v for v in catch_group if v])
+
+    # UPSERT new record with all fields
     await app.state.services.database.execute(
         """
         REPLACE INTO player_pp_aggregates (
             player_id,
-            all_modes_total, all_modes_stddev,
-            classic_total, classic_stddev,
-            relax_total, relax_stddev
+            pp_total_all_modes, pp_stddev_all_modes,
+            pp_total_classic, pp_stddev_classic,
+            pp_total_relax, pp_stddev_relax,
+            pp_total_std, pp_total_taiko, pp_total_catch,
+            pp_stddev_std, pp_stddev_taiko, pp_stddev_catch
         ) VALUES (
             :player_id,
-            :all_modes_total, :all_modes_stddev,
-            :classic_total, :classic_stddev,
-            :relax_total, :relax_stddev
+            :pp_total_all_modes, :pp_stddev_all_modes,
+            :pp_total_classic, :pp_stddev_classic,
+            :pp_total_relax, :pp_stddev_relax,
+            :pp_total_std, :pp_total_taiko, :pp_total_catch,
+            :pp_stddev_std, :pp_stddev_taiko, :pp_stddev_catch
         )
         """,
         {
             "player_id": player_id,
-            "all_modes_total": all_total,
-            "all_modes_stddev": all_stddev,
-            "classic_total": classic_total,
-            "classic_stddev": classic_stddev,
-            "relax_total": relax_total,
-            "relax_stddev": relax_stddev,
-        },
+            "pp_total_all_modes": all_total, "pp_stddev_all_modes": all_stddev,
+            "pp_total_classic": classic_total, "pp_stddev_classic": classic_stddev,
+            "pp_total_relax": relax_total, "pp_stddev_relax": relax_stddev,
+            "pp_total_std": std_total, "pp_total_taiko": taiko_total, "pp_total_catch": catch_total,
+            "pp_stddev_std": std_stddev, "pp_stddev_taiko": taiko_stddev, "pp_stddev_catch": catch_stddev
+        }
     )
