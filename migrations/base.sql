@@ -206,11 +206,20 @@ create table player_pp_aggregates
 (
 	player_id int not null
 		primary key,
+	pp_std int unsigned default 0 not null,
+	pp_std_rx int unsigned default 0 not null,
+	pp_std_ap int unsigned default 0 not null,
+	pp_taiko int unsigned default 0 not null,
+	pp_taiko_rx int unsigned default 0 not null,
+	pp_catch int unsigned default 0 not null,
+	pp_catch_rx int unsigned default 0 not null,
+	pp_mania int unsigned default 0 not null,
+
 	pp_total_all_modes int unsigned default 0 not null,
-	pp_stddev_all_modes int unsigned default 0 not null,
 	pp_total_classic int unsigned default 0 not null,
-	pp_stddev_classic int unsigned default 0 not null,
 	pp_total_relax int unsigned default 0 not null,
+	pp_stddev_all_modes int unsigned default 0 not null,
+	pp_stddev_classic int unsigned default 0 not null,
 	pp_stddev_relax int unsigned default 0 not null,
 
 	pp_total_std int unsigned default 0 not null,
